@@ -1,65 +1,117 @@
-import Head from 'next/head'
-import styles from '../styles/Home.module.css'
+import { useEffect, useState } from 'react'
 
-export default function Home() {
+/**
+ * Convert a template string into HTML DOM nodes
+ * @param  {String} str The template string
+ * @return {Node}       The template HTML
+ */
+function stringToHTML(str) {
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(str, 'text/html')
+  // DOMParser automatically puts <script> tags inside
+  // doc.head instead of doc.body
+  return doc.head
+}
+
+export default function App() {
+  const [value, setValue] = useState('')
+  const [result, setResult] = useState('')
+
+  useEffect(() => {
+    if (value === '') {
+      setResult('')
+      return
+    }
+
+    if (
+      !value.trim().startsWith('<script ') ||
+      !value.trim().endsWith('</script>')
+    ) {
+      console.log(value)
+      setResult('')
+      return
+    } else if (!value.includes('src=')) {
+      console.log(value)
+      setResult('')
+      return
+    }
+
+    console.log(value)
+
+    const script = stringToHTML(value).querySelector('script')
+
+    let attributes = [...script.attributes].map((attr) => {
+      return {
+        name: attr.name,
+        value: attr.value,
+      }
+    })
+
+    if (!attributes.find((attr) => attr.type === 'async')) {
+      attributes.push({
+        name: 'async',
+        value: 'true',
+      })
+    }
+
+    attributes = attributes.filter((attr) => attr.name !== 'defer')
+
+    let attributesStr = ''
+
+    attributes.forEach((attr) => {
+      if (attr.value === 'true' || attr.value === 'false') {
+        attributesStr += `\n    script.${attr.name} = ${attr.value};`
+      } else {
+        attributesStr += `\n    script.${attr.name} = '${attr.value}';`
+      }
+    })
+
+    let newResult = `<script>
+((w, d) => {
+  const activityEvents = [
+    'mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'
+  ];
+
+  function handleUserActivity() {
+    activityEvents.forEach(function(eventName) {
+      d.removeEventListener(eventName, handleUserActivity, true);
+    });
+
+    const script = d.createElement('script');
+    ${attributesStr}
+
+    d.body.appendChild(script);
+  }
+
+  w.addEventListener('load', () => {
+    activityEvents.forEach(function(eventName) {
+      d.addEventListener(eventName, handleUserActivity, true);
+    });
+  });
+})(window, document);
+</script>`
+
+    setResult(newResult)
+  }, [value])
+
   return (
-    <div className={styles.container}>
-      <Head>
-        <title>Create Next App</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-
-      <main className={styles.main}>
-        <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
-        </h1>
-
-        <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.js</code>
-        </p>
-
-        <div className={styles.grid}>
-          <a href="https://nextjs.org/docs" className={styles.card}>
-            <h3>Documentation &rarr;</h3>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className={styles.card}>
-            <h3>Learn &rarr;</h3>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/master/examples"
-            className={styles.card}
-          >
-            <h3>Examples &rarr;</h3>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/import?filter=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-          >
-            <h3>Deploy &rarr;</h3>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
-        </div>
-      </main>
-
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <img src="/vercel.svg" alt="Vercel Logo" className={styles.logo} />
-        </a>
-      </footer>
+    <div className="App">
+      <p>
+        <strong>
+          Converts a script tag with a 'src' attribute to one that will load the
+          script on first user activity.
+        </strong>
+      </p>
+      <p>Example code:</p>
+      <pre>
+        {`<script type="text/javascript" src="https://some-external-site.com/widget/12345.js" defer></script>`}
+      </pre>
+      <p>
+        Enter a <code>{'<script>'}</code> tag:
+      </p>
+      <textarea value={value} onChange={(e) => setValue(e.target.value)} />
+      <p>Result:</p>
+      <pre style={{ whiteSpace: 'pre-wrap' }}>{result}</pre>
     </div>
   )
 }

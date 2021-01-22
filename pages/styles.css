@@ -1,0 +1,15 @@
+textarea,
+pre {
+  font-family: 'Fira Code', 'Menlo', 'Courier New', Courier, monospace;
+  font-size: 13px;
+}
+
+textarea {
+  width: 100ch;
+  height: 50ch;
+}
+
+pre {
+  padding: 1rem;
+  background: #ddd;
+}
