@@ -36,14 +36,31 @@ export default function App() {
       return
     }
 
-    console.log(value)
-
     const script = stringToHTML(value).querySelector('script')
 
     let attributes = [...script.attributes].map((attr) => {
+      let name = attr.name
+      let value = attr.value
+
+      if (attr.name.startsWith('data-')) {
+        // get the parts after `data-`
+        let datasetNameParts = name.split('-')
+        datasetNameParts.shift()
+
+        // camelCase the dataset attribute
+        datasetNameParts = datasetNameParts.map((part, index) => {
+          if (index > 0) {
+            return part.charAt(0).toUpperCase() + part.slice(1)
+          }
+          return part;
+        })
+
+        name = `dataset.${datasetNameParts.join('')}`
+      }
+
       return {
-        name: attr.name,
-        value: attr.value,
+        name,
+        value,
       }
     })
 
@@ -66,30 +83,32 @@ export default function App() {
       }
     })
 
-    let newResult = `<script>
-((w, d) => {
-  const activityEvents = [
-    'mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'
-  ];
+    let newResult = /* html */`
+<script>
+  ((w, d) => {
+    const activityEvents = [
+      'mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'
+    ];
 
-  function handleUserActivity() {
-    activityEvents.forEach(function(eventName) {
-      d.removeEventListener(eventName, handleUserActivity, true);
+    function handleUserActivity() {
+      activityEvents.forEach(function(eventName) {
+        d.removeEventListener(eventName, handleUserActivity, true);
+      });
+
+      const script = d.createElement('script');
+      ${attributesStr}
+
+      d.body.appendChild(script);
+    }
+
+    w.addEventListener('load', () => {
+      activityEvents.forEach(function(eventName) {
+        d.addEventListener(eventName, handleUserActivity, true);
+      });
     });
-
-    const script = d.createElement('script');
-    ${attributesStr}
-
-    d.body.appendChild(script);
-  }
-
-  w.addEventListener('load', () => {
-    activityEvents.forEach(function(eventName) {
-      d.addEventListener(eventName, handleUserActivity, true);
-    });
-  });
-})(window, document);
-</script>`
+  })(window, document);
+</script>
+    `
 
     setResult(newResult)
   }, [value])
